@@ -6,23 +6,20 @@ const app = express();
 app.use(cors());
 
 app.get('/', (req, res) => {
-    res.send(`
-        <h2>Enter a URL</h2>
-        <form action="/browse">
-            <input type="text" name="url" placeholder="https://example.com">
-            <button type="submit">Go</button>
-        </form>
-    `);
+    res.redirect('/browse?url=https://panzer.quest');
 });
 
 app.get('/browse', async (req, res) => {
     let targetUrl = req.query.url;
     if (!targetUrl) return res.send("No URL provided");
 
-    let response = await fetch(targetUrl);
+    let response = await fetch(targetUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+
     let body = await response.text();
 
-    res.send(body.replace(/href="\//g, `href="/browse?url=${targetUrl}/`)); 
+    res.send(body.replace(/href="\//g, `href="/browse?url=${targetUrl}/`));
 });
 
 const PORT = process.env.PORT || 3000;
