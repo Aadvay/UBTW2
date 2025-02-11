@@ -1,38 +1,29 @@
-const express = require('express');
-const fetch = require('node-fetch');
-const cors = require('cors');
+export default {
+    async fetch(request) {
+        let url = new URL(request.url);
+        url.hostname = "panzer.quest"; // Target site
 
-const app = express();
-app.use(cors());
+        let modifiedHeaders = new Headers(request.headers);
+        modifiedHeaders.set("Origin", "https://panzer.quest");
+        modifiedHeaders.set("Referer", "https://panzer.quest/");
+        modifiedHeaders.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+        modifiedHeaders.set("Host", "panzer.quest");
 
-app.get('/', (req, res) => {
-    res.redirect('/browse?url=https://panzer.quest');
-});
-
-app.get('/browse', async (req, res) => {
-    let targetUrl = req.query.url;
-    if (!targetUrl) return res.send("No URL provided");
-
-    try {
-        let response = await fetch(targetUrl, {
-            headers: { 
-                'User-Agent': 'Mozilla/5.0',
-                'Referer': 'https://panzer.quest',
-                'Origin': 'https://panzer.quest'
-            }
+        let response = await fetch(url, {
+            method: request.method,
+            headers: modifiedHeaders,
+            body: request.method === "GET" ? null : request.body,
+            redirect: "manual"
         });
 
-        let body = await response.text();
+        if (response.status >= 300 && response.status < 400) {
+            let location = response.headers.get("Location");
+            if (location && location.startsWith("https://panzer.quest")) {
+                location = location.replace("https://panzer.quest", request.url.origin);
+                return Response.redirect(location, response.status);
+            }
+        }
 
-        // Fix relative links
-        body = body.replace(/href="\//g, `href="${targetUrl}/`);
-        body = body.replace(/src="\//g, `src="${targetUrl}/`);
-
-        res.send(body);
-    } catch (error) {
-        res.send(`Error fetching page: ${error.message}`);
+        return new Response(response.body, response);
     }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+};
